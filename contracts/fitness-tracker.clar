@@ -3,6 +3,7 @@
 ;; Constants
 (define-constant contract-owner tx-sender)
 (define-constant err-owner-only (err u100))
+(define-constant err-invalid-input (err u101))
 
 ;; Data structures
 (define-map activities 
@@ -19,6 +20,9 @@
       (activity-id (var-get activity-counter))
     )
     (begin
+      ;; Input validation
+      (asserts! (> distance u0) err-invalid-input)
+      (asserts! (> duration u0) err-invalid-input)
       (map-set activities 
         { user: tx-sender, activity-id: activity-id }
         { activity-type: activity-type, timestamp: block-height, distance: distance, duration: duration, rewarded: false }
@@ -51,7 +55,13 @@
   (map-get? activities { user: user, activity-id: activity-id })
 )
 
-(define-read-only (calculate-reward (activity { activity-type: (string-ascii 32), timestamp: uint, distance: uint, duration: uint, rewarded: bool }))
-  ;; Basic reward calculation based on distance and duration
-  (/ (* distance duration) u100)
+(define-read-only (calculate-reward (activity { activity-type: (string-ascii 32), timestamp: uint, distance: uint, duration: uint, rewarded: bool })
+  ;; Enhanced reward calculation based on distance and duration with minimum threshold
+  (let
+    ((base-reward (/ (* distance duration) u100)))
+    (if (< base-reward u10)
+      u10 ;; Minimum reward threshold
+      base-reward
+    )
+  )
 )

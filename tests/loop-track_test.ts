@@ -21,9 +21,20 @@ Clarinet.test({
         user1.address
       )
     ]);
-    assertEquals(block.receipts.length, 1);
-    assertEquals(block.height, 2);
+    assertEquals(block.receipts[0].result, '(ok u0)');
     
+    // Test invalid input
+    block = chain.mineBlock([
+      Tx.contractCall(
+        "fitness-tracker",
+        "record-activity", 
+        [types.ascii("running"), types.uint(0), types.uint(1800)],
+        user1.address
+      )
+    ]);
+    assertEquals(block.receipts[0].result, '(err u101)');
+    
+    // Test reward claiming
     block = chain.mineBlock([
       Tx.contractCall(
         "fitness-tracker", 
@@ -32,8 +43,7 @@ Clarinet.test({
         user1.address
       )
     ]);
-    assertEquals(block.receipts.length, 1);
-    assertEquals(block.height, 3);
+    assertEquals(block.receipts[0].result, '(ok true)');
   },
 });
 
@@ -52,7 +62,7 @@ Clarinet.test({
         deployer.address
       )
     ]);
-    assertEquals(block.receipts.length, 1);
+    assertEquals(block.receipts[0].result, '(ok true)');
     
     block = chain.mineBlock([
       Tx.contractCall(
@@ -62,6 +72,6 @@ Clarinet.test({
         user1.address
       )
     ]);
-    assertEquals(block.receipts.length, 1);
+    assertEquals(block.receipts[0].result, '(ok true)');
   },
 });
