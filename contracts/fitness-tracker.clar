@@ -4,6 +4,8 @@
 (define-constant contract-owner tx-sender)
 (define-constant err-owner-only (err u100))
 (define-constant err-invalid-input (err u101))
+(define-constant err-invalid-activity-type (err u102))
+(define-constant max-activity-type-length u32)
 
 ;; Data structures
 (define-map activities 
@@ -18,11 +20,13 @@
   (let
     (
       (activity-id (var-get activity-counter))
+      (type-length (len activity-type))
     )
     (begin
       ;; Input validation
       (asserts! (> distance u0) err-invalid-input)
       (asserts! (> duration u0) err-invalid-input)
+      (asserts! (<= type-length max-activity-type-length) err-invalid-activity-type)
       (map-set activities 
         { user: tx-sender, activity-id: activity-id }
         { activity-type: activity-type, timestamp: block-height, distance: distance, duration: duration, rewarded: false }
@@ -55,10 +59,13 @@
   (map-get? activities { user: user, activity-id: activity-id })
 )
 
-(define-read-only (calculate-reward (activity { activity-type: (string-ascii 32), timestamp: uint, distance: uint, duration: uint, rewarded: bool })
-  ;; Enhanced reward calculation based on distance and duration with minimum threshold
+(define-read-only (calculate-reward (activity { activity-type: (string-ascii 32), timestamp: uint, distance: uint, duration: uint, rewarded: bool }))
+  ;; Safe reward calculation with overflow protection
   (let
-    ((base-reward (/ (* distance duration) u100)))
+    (
+      (safe-multiple (/ distance u100))  ;; Prevent overflow by early division
+      (base-reward (/ (* safe-multiple duration) u100))
+    )
     (if (< base-reward u10)
       u10 ;; Minimum reward threshold
       base-reward
