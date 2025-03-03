@@ -13,6 +13,7 @@ Clarinet.test({
     const deployer = accounts.get("deployer")!;
     const user1 = accounts.get("wallet_1")!;
     
+    // Test valid activity recording
     let block = chain.mineBlock([
       Tx.contractCall(
         "fitness-tracker",
@@ -34,6 +35,17 @@ Clarinet.test({
     ]);
     assertEquals(block.receipts[0].result, '(err u101)');
     
+    // Test invalid activity type length
+    block = chain.mineBlock([
+      Tx.contractCall(
+        "fitness-tracker",
+        "record-activity",
+        [types.ascii("this-is-a-very-long-activity-type-that-should-fail"), types.uint(5000), types.uint(1800)],
+        user1.address
+      )
+    ]);
+    assertEquals(block.receipts[0].result, '(err u102)');
+    
     // Test reward claiming
     block = chain.mineBlock([
       Tx.contractCall(
@@ -48,12 +60,13 @@ Clarinet.test({
 });
 
 Clarinet.test({
-  name: "Test LOOP token transfers",
+  name: "Test LOOP token transfers and supply management",
   async fn(chain: Chain, accounts: Map<string, Account>) {
     const deployer = accounts.get("deployer")!;
     const user1 = accounts.get("wallet_1")!;
     const user2 = accounts.get("wallet_2")!;
     
+    // Test minting
     let block = chain.mineBlock([
       Tx.contractCall(
         "loop-token",
@@ -64,6 +77,18 @@ Clarinet.test({
     ]);
     assertEquals(block.receipts[0].result, '(ok true)');
     
+    // Verify balance after mint
+    block = chain.mineBlock([
+      Tx.contractCall(
+        "loop-token",
+        "get-balance",
+        [types.principal(user1.address)],
+        user1.address
+      )
+    ]);
+    assertEquals(block.receipts[0].result, '(ok u1000)');
+    
+    // Test transfer
     block = chain.mineBlock([
       Tx.contractCall(
         "loop-token",
@@ -73,5 +98,16 @@ Clarinet.test({
       )
     ]);
     assertEquals(block.receipts[0].result, '(ok true)');
+    
+    // Verify balances after transfer
+    block = chain.mineBlock([
+      Tx.contractCall(
+        "loop-token",
+        "get-balance",
+        [types.principal(user1.address)],
+        user1.address
+      )
+    ]);
+    assertEquals(block.receipts[0].result, '(ok u500)');
   },
 });
